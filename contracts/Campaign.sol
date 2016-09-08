@@ -1,4 +1,5 @@
 import "./RJToken.sol";
+import "./RJFund.sol";
 
 contract Campaign {
     address public beneficiary;
@@ -6,12 +7,15 @@ contract Campaign {
     uint public goal;             
     uint public totalAmount;      
     uint public expiry;
+    uint public numContributors;
 
     RJToken token;
+    RJFund fund;
 
     struct Contribution{
         address contributor;
         uint amount;
+        uint time;
         bool refunded;
     }
     uint numContribution;
@@ -22,8 +26,9 @@ contract Campaign {
 
     event Contributed(address from, uint value);
 
-    function Campaign(address _token, address _b, uint _goal, uint _expiry) {
+    function Campaign(address _token, address _rjfund, address _b, uint _goal, uint _expiry) {
         token = RJToken(_token);
+        fund = RJFund(_rjfund);
         goal = _goal;
         expiry = _expiry;
         owner = msg.sender;
@@ -32,6 +37,8 @@ contract Campaign {
         }else {
             beneficiary = msg.sender;
         }
+
+        fund.newCampaign(this);
     }
 
     function contribute(uint value) {
@@ -43,13 +50,19 @@ contract Campaign {
         c.contributor = msg.sender;
         c.amount = value;
         c.refunded = false;
+        c.time = now;
 
         token.transfer(msg.sender, this, value);
 
         totalAmount += value;
 
-        toContribution[msg.sender].push(id); 
+        if (toContribution[msg.sender].length == 0) {
+            numContributors++;    
+        }
 
+        toContribution[msg.sender].push(id); 
+    
+        fund.newContribute(msg.sender, this);
         Contributed(msg.sender, value);
     }
 
